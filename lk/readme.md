@@ -2,7 +2,7 @@
 - Just to acknowledge separating the services seems a little odd, normally a service would be responsible for its own storage
 - Will use a uuid as the type for the user Id
 - Assuming the service usage profile is more reads than writes
-- Will use json over http for both services for interoper with other stacks - Could use http://golang.org/pkg/net/rpc/ or http://golang.org/pkg/net/rpc/jsonrpc/ for better perf (Would need to do perf measurements based on expected usage)
+- Will use json over http for both services for interop with other stacks - Could use http://golang.org/pkg/net/rpc/ or http://golang.org/pkg/net/rpc/jsonrpc/ for better perf (Would need to do perf measurements based on expected usage)
 - Will only support application/json media type
 - Does not require TLS support
 - Will not support adding a user with connections - This is achieved by adding a user and then adding user connections as seperate service calls
