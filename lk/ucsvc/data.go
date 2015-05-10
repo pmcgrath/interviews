@@ -6,28 +6,32 @@ import (
 	"code.google.com/p/go-uuid/uuid"
 )
 
-type Id string
+var (
+	emptyID = ID("")
+)
 
-func NewId() Id {
-	return Id(uuid.New())
+type ID string
+
+func newID() ID {
+	return ID(uuid.New())
 }
 
-func (i Id) IsValid() bool {
+func (i ID) IsValid() bool {
 	idAsString := string(i)
-	parsedId := uuid.Parse(idAsString)
+	parsedID := uuid.Parse(idAsString)
 
-	if parsedId == nil {
+	if parsedID == nil {
 		return false
 	}
 
-	return idAsString == parsedId.String()
+	return idAsString == parsedID.String()
 }
 
-type NewUser struct {
+type newUser struct {
 	Name string `json:"name"`
 }
 
-func (u *NewUser) IsValid() bool {
+func (u *newUser) IsValid() bool {
 	if strings.TrimSpace(u.Name) == "" {
 		return false
 	}
@@ -35,13 +39,13 @@ func (u *NewUser) IsValid() bool {
 	return true
 }
 
-type User struct {
-	Id   Id     `json:"id,Id"`
+type user struct {
+	ID   ID     `json:"id,ID"`
 	Name string `json:"name"`
 }
 
-func (u *User) IsValid() bool {
-	if !u.Id.IsValid() {
+func (u *user) IsValid() bool {
+	if !u.ID.IsValid() {
 		return false
 	}
 	if strings.TrimSpace(u.Name) == "" {
@@ -51,7 +55,7 @@ func (u *User) IsValid() bool {
 	return true
 }
 
-type ConnectedUser struct {
-	*User
-	Connections []*User `json:"connections"`
+type connectedUser struct {
+	*user
+	Connections []*user `json:"connections"`
 }

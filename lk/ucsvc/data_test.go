@@ -2,9 +2,9 @@ package main
 
 import "testing"
 
-func TestNewId(t *testing.T) {
-	id1 := NewId()
-	id2 := NewId()
+func TestNewID(t *testing.T) {
+	id1 := newID()
+	id2 := newID()
 
 	if len(id1) != 36 {
 		t.Errorf("id1 [%s] unexpected length of %d, expected 36", id1, len(id1))
@@ -14,33 +14,33 @@ func TestNewId(t *testing.T) {
 	}
 }
 
-func TestId_IsValid(t *testing.T) {
+func TestID_IsValid(t *testing.T) {
 	testCases := []struct {
-		Id       Id
+		ID       ID
 		Expected bool
 	}{
-		{Id(""), false},
-		{Id("f47ac10b-58cc-0372-8567-0e02b2c3d479-a"), false},
-		{Id("f47ac10b-58cc-0372-8567-0e02b2c3d479"), true},
-		{NewId(), true},
+		{emptyID, false},
+		{ID("f47ac10b-58cc-0372-8567-0e02b2c3d479-a"), false},
+		{ID("f47ac10b-58cc-0372-8567-0e02b2c3d479"), true},
+		{newID(), true},
 	}
 
 	for _, testCase := range testCases {
-		actual := testCase.Id.IsValid()
+		actual := testCase.ID.IsValid()
 		if actual != testCase.Expected {
-			t.Errorf("For %s expected %t, actual %t", testCase.Id, testCase.Expected, actual)
+			t.Errorf("For %s expected %t, actual %t", testCase.ID, testCase.Expected, actual)
 		}
 	}
 }
 
 func TestNewUser_IsValid(t *testing.T) {
 	testCases := []struct {
-		User     *NewUser
+		User     *newUser
 		Expected bool
 	}{
-		{&NewUser{Name: ""}, false},
-		{&NewUser{Name: "  "}, false},
-		{&NewUser{Name: "ted"}, true},
+		{&newUser{Name: ""}, false},
+		{&newUser{Name: "  "}, false},
+		{&newUser{Name: "ted"}, true},
 	}
 
 	for _, testCase := range testCases {
@@ -53,13 +53,13 @@ func TestNewUser_IsValid(t *testing.T) {
 
 func TestUser_IsValid(t *testing.T) {
 	testCases := []struct {
-		User     *User
+		User     *user
 		Expected bool
 	}{
-		{&User{Id: Id(""), Name: ""}, false},
-		{&User{Id: Id("f47ac10b-58cc-0372-8567-0e02b2c3d479-a"), Name: ""}, false},
-		{&User{Id: Id("f47ac10b-58cc-0372-8567-0e02b2c3d479"), Name: "  "}, false},
-		{&User{Id: NewId(), Name: "ted"}, true},
+		{&user{ID: emptyID, Name: ""}, false},
+		{&user{ID: ID("f47ac10b-58cc-0372-8567-0e02b2c3d479-a"), Name: ""}, false},
+		{&user{ID: ID("f47ac10b-58cc-0372-8567-0e02b2c3d479"), Name: "  "}, false},
+		{&user{ID: newID(), Name: "ted"}, true},
 	}
 
 	for _, testCase := range testCases {

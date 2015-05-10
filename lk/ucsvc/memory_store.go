@@ -2,21 +2,28 @@ package main
 
 import "sync"
 
-// Should really be using a data structure that supports graph like access - bi-directional, but since for now this will do,
-// the interface is the important thing at this stage
+func newMemoryStore() storer {
+	return &memoryStore{
+		UserIndex:            make(map[ID]*user),
+		UserConnectionsIndex: make(map[ID]map[ID]struct{}),
+	}
+}
+
+// Should really be using a data structure that supports graph like access - bi-directional, but since we are going to use a seperate
+// persistence service this will do for now, the interface is the important thing at this stage
 type memoryStore struct {
-	userIndex            map[Id]*User
-	userConnectionsIndex map[Id]map[Id]struct{}
+	UserIndex            map[ID]*user
+	UserConnectionsIndex map[ID]map[ID]struct{}
 	sync.RWMutex
 }
 
-func (s *memoryStore) GetAllUsers() ([]*ConnectedUser, error) {
+func (s *memoryStore) GetAllUsers() ([]*connectedUser, error) {
 	s.RLock()
 	defer s.RUnlock()
 
-	connectedUsers := make([]*ConnectedUser, 0, len(s.userIndex))
-	for _, user := range s.userIndex {
-		connectedUser, err := s.GetUser(user.Id)
+	connectedUsers := make([]*connectedUser, 0, len(s.UserIndex))
+	for _, user := range s.UserIndex {
+		connectedUser, err := s.GetUser(user.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -27,92 +34,85 @@ func (s *memoryStore) GetAllUsers() ([]*ConnectedUser, error) {
 	return connectedUsers, nil
 }
 
-func (s *memoryStore) GetUser(id Id) (*ConnectedUser, error) {
+func (s *memoryStore) GetUser(id ID) (*connectedUser, error) {
 	s.RLock()
 	defer s.RUnlock()
 
-	user, ok := s.userIndex[id]
+	theUser, ok := s.UserIndex[id]
 	if !ok {
-		return nil, ErrNotFound
+		return nil, errNotFound
 	}
 
-	var connections []*User
-	if cids, ok := s.userConnectionsIndex[user.Id]; ok {
-		connections = make([]*User, 0, len(cids))
-		for cid, _ := range cids {
-			cuser := s.userIndex[cid]
+	var connections []*user
+	if cids, ok := s.UserConnectionsIndex[theUser.ID]; ok {
+		connections = make([]*user, 0, len(cids))
+		for cid := range cids {
+			cuser := s.UserIndex[cid]
 			connections = append(connections, cuser)
 		}
 	}
-	connectedUser := &ConnectedUser{User: user, Connections: connections}
+	connectedUser := &connectedUser{user: theUser, Connections: connections}
 
 	return connectedUser, nil
 }
 
-func (s *memoryStore) SaveUser(user *User) error {
+func (s *memoryStore) SaveUser(user *user) error {
 	s.Lock()
 	defer s.Unlock()
 
-	s.userIndex[user.Id] = user // Upsert
+	s.UserIndex[user.ID] = user // Upsert
 
 	return nil
 }
 
-func (s *memoryStore) DeleteUser(id Id) error {
+func (s *memoryStore) DeleteUser(id ID) error {
 	s.Lock()
 	defer s.Unlock()
 
-	if ids, ok := s.userConnectionsIndex[id]; ok {
-		for cid, _ := range ids {
-			delete(s.userConnectionsIndex[cid], id)
+	if ids, ok := s.UserConnectionsIndex[id]; ok {
+		for cid := range ids {
+			delete(s.UserConnectionsIndex[cid], id)
 		}
-		delete(s.userConnectionsIndex, id)
+		delete(s.UserConnectionsIndex, id)
 	}
 
-	delete(s.userIndex, id)
+	delete(s.UserIndex, id)
 
 	return nil
 }
 
-func (s *memoryStore) CreateUserConnection(id1, id2 Id) error {
+func (s *memoryStore) CreateUserConnection(id1, id2 ID) error {
 	s.Lock()
 	defer s.Unlock()
 
-	_, ok := s.userConnectionsIndex[id1]
+	_, ok := s.UserConnectionsIndex[id1]
 	if !ok {
-		s.userConnectionsIndex[id1] = make(map[Id]struct{})
+		s.UserConnectionsIndex[id1] = make(map[ID]struct{})
 	}
-	s.userConnectionsIndex[id1][id2] = struct{}{}
+	s.UserConnectionsIndex[id1][id2] = struct{}{}
 
-	_, ok = s.userConnectionsIndex[id2]
+	_, ok = s.UserConnectionsIndex[id2]
 	if !ok {
-		s.userConnectionsIndex[id2] = make(map[Id]struct{})
+		s.UserConnectionsIndex[id2] = make(map[ID]struct{})
 	}
-	s.userConnectionsIndex[id2][id1] = struct{}{}
+	s.UserConnectionsIndex[id2][id1] = struct{}{}
 
 	return nil
 }
 
-func (s *memoryStore) DeleteUserConnection(id1, id2 Id) error {
+func (s *memoryStore) DeleteUserConnection(id1, id2 ID) error {
 	s.Lock()
 	defer s.Unlock()
 
-	_, ok := s.userConnectionsIndex[id1]
+	_, ok := s.UserConnectionsIndex[id1]
 	if ok {
-		delete(s.userConnectionsIndex[id1], id2)
+		delete(s.UserConnectionsIndex[id1], id2)
 	}
 
-	_, ok = s.userConnectionsIndex[id2]
+	_, ok = s.UserConnectionsIndex[id2]
 	if ok {
-		delete(s.userConnectionsIndex[id2], id1)
+		delete(s.UserConnectionsIndex[id2], id1)
 	}
 
 	return nil
-}
-
-func NewMemoryStore() Storer {
-	return &memoryStore{
-		userIndex:            make(map[Id]*User),
-		userConnectionsIndex: make(map[Id]map[Id]struct{}),
-	}
 }

@@ -7,12 +7,10 @@ import (
 	"github.com/labstack/echo"
 )
 
-type UserHandler struct {
-	uc *UserConnections
-}
+var userConns *userConnections
 
-func (uh *UserHandler) getUsers(c *echo.Context) error {
-	users, err := uh.uc.GetAll()
+func getUsers(c *echo.Context) error {
+	users, err := userConns.GetAll()
 	if err != nil {
 		return err
 	}
@@ -20,13 +18,13 @@ func (uh *UserHandler) getUsers(c *echo.Context) error {
 	return c.JSON(http.StatusOK, users)
 }
 
-func (uh *UserHandler) createUser(c *echo.Context) error {
-	newUser := &NewUser{}
+func createUser(c *echo.Context) error {
+	newUser := &newUser{}
 	if err := c.Bind(newUser); err != nil {
 		return err
 	}
 
-	id, err := uh.uc.Create(newUser)
+	id, err := userConns.Create(newUser)
 	if err != nil {
 		return err
 	}
@@ -38,10 +36,10 @@ func (uh *UserHandler) createUser(c *echo.Context) error {
 	return nil
 }
 
-func (uh *UserHandler) getUser(c *echo.Context) error {
-	id := Id(c.P(0))
+func getUser(c *echo.Context) error {
+	id := ID(c.P(0))
 
-	user, err := uh.uc.Get(id)
+	user, err := userConns.Get(id)
 	if err != nil {
 		return err
 	}
@@ -49,16 +47,16 @@ func (uh *UserHandler) getUser(c *echo.Context) error {
 	return c.JSON(http.StatusOK, user)
 }
 
-func (uh *UserHandler) deleteUser(c *echo.Context) error {
-	id := Id(c.P(0))
+func deleteUser(c *echo.Context) error {
+	id := ID(c.P(0))
 
-	return uh.uc.Delete(id)
+	return userConns.Delete(id)
 }
 
-func (uh *UserHandler) getUserConnections(c *echo.Context) error {
-	id := Id(c.P(0))
+func getUserConnections(c *echo.Context) error {
+	id := ID(c.P(0))
 
-	user, err := uh.uc.Get(id)
+	user, err := userConns.Get(id)
 	if err != nil {
 		return err
 	}
@@ -66,16 +64,23 @@ func (uh *UserHandler) getUserConnections(c *echo.Context) error {
 	return c.JSON(http.StatusOK, user.Connections)
 }
 
-func (uh *UserHandler) createUserConnection(c *echo.Context) error {
-	id1 := Id(c.P(0))
-	id2 := Id(c.P(1))
+func createUserConnection(c *echo.Context) error {
+	id1 := ID(c.P(0))
+	id2 := ID(c.P(1))
 
-	return uh.uc.CreateConnection(id1, id2)
+	err := userConns.CreateConnection(id1, id2)
+	if err != nil {
+		return err
+	}
+
+	c.Response.WriteHeader(http.StatusCreated)
+
+	return nil
 }
 
-func (uh *UserHandler) deleteUserConnection(c *echo.Context) error {
-	id1 := Id(c.P(0))
-	id2 := Id(c.P(1))
+func deleteUserConnection(c *echo.Context) error {
+	id1 := ID(c.P(0))
+	id2 := ID(c.P(1))
 
-	return uh.uc.DeleteConnection(id1, id2)
+	return userConns.DeleteConnection(id1, id2)
 }

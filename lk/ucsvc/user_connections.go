@@ -1,93 +1,93 @@
 package main
 
-type UserConnections struct {
-	store Storer
-}
-
-func NewUserConnections(store Storer) *UserConnections {
-	return &UserConnections{
-		store: store,
+func newUserConnections(store storer) *userConnections {
+	return &userConnections{
+		Store: store,
 	}
 }
 
-func (u *UserConnections) GetAll() ([]*ConnectedUser, error) {
-	return u.store.GetAllUsers()
+type userConnections struct {
+	Store storer
 }
 
-func (u *UserConnections) Get(id Id) (*ConnectedUser, error) {
+func (u *userConnections) GetAll() ([]*connectedUser, error) {
+	return u.Store.GetAllUsers()
+}
+
+func (u *userConnections) Get(id ID) (*connectedUser, error) {
 	if !id.IsValid() {
-		return nil, ErrInvalidUserId
+		return nil, errInvalidUserID
 	}
 
-	return u.store.GetUser(id)
+	return u.Store.GetUser(id)
 }
 
-func (u *UserConnections) Create(newUser *NewUser) (Id, error) {
+func (u *userConnections) Create(newUser *newUser) (ID, error) {
 	if !newUser.IsValid() {
-		return Id(""), ErrInvalidRequestData
+		return emptyID, errInvalidRequestData
 	}
 
-	lid := NewId()
-	user := &User{
-		Id:   lid,
+	id := newID()
+	user := &user{
+		ID:   id,
 		Name: newUser.Name,
 	}
 
-	if err := u.store.SaveUser(user); err != nil {
-		return Id(""), err
+	if err := u.Store.SaveUser(user); err != nil {
+		return emptyID, err
 	}
 
-	return lid, nil
+	return id, nil
 }
 
-func (u *UserConnections) Delete(id Id) error {
+func (u *userConnections) Delete(id ID) error {
 	if !id.IsValid() {
-		return ErrInvalidUserId
+		return errInvalidUserID
 	}
 
-	if _, err := u.store.GetUser(id); err != nil {
+	if _, err := u.Store.GetUser(id); err != nil {
 		return err
 	}
 
-	return u.store.DeleteUser(id)
+	return u.Store.DeleteUser(id)
 }
 
-func (u *UserConnections) CreateConnection(id1, id2 Id) error {
+func (u *userConnections) CreateConnection(id1, id2 ID) error {
 	if !id1.IsValid() {
-		return ErrInvalidUserId
+		return errInvalidUserID
 	}
 
 	if !id2.IsValid() {
-		return ErrInvalidUserId
+		return errInvalidUserID
 	}
 
-	if _, err := u.store.GetUser(id1); err != nil {
+	if _, err := u.Store.GetUser(id1); err != nil {
 		return err
 	}
 
-	if _, err := u.store.GetUser(id2); err != nil {
+	if _, err := u.Store.GetUser(id2); err != nil {
 		return err
 	}
 
-	return u.store.CreateUserConnection(id1, id2)
+	return u.Store.CreateUserConnection(id1, id2)
 }
 
-func (u *UserConnections) DeleteConnection(id1, id2 Id) error {
+func (u *userConnections) DeleteConnection(id1, id2 ID) error {
 	if !id1.IsValid() {
-		return ErrInvalidUserId
+		return errInvalidUserID
 	}
 
 	if !id2.IsValid() {
-		return ErrInvalidUserId
+		return errInvalidUserID
 	}
 
-	if _, err := u.store.GetUser(id1); err != nil {
+	if _, err := u.Store.GetUser(id1); err != nil {
 		return err
 	}
 
-	if _, err := u.store.GetUser(id2); err != nil {
+	if _, err := u.Store.GetUser(id2); err != nil {
 		return err
 	}
 
-	return u.store.DeleteUserConnection(id1, id2)
+	return u.Store.DeleteUserConnection(id1, id2)
 }

@@ -9,9 +9,9 @@ import (
 )
 
 var (
-	ErrInvalidUserId      = errors.New("Invalid user Id")
-	ErrInvalidRequestData = errors.New("Invalid request data")
-	ErrNotFound           = errors.New("Not found")
+	errInvalidUserID      = errors.New("Invalid user Id")
+	errInvalidRequestData = errors.New("Invalid request data")
+	errNotFound           = errors.New("Not found")
 )
 
 func globalErrorHandler(code int, err error, c *echo.Context) {
@@ -24,11 +24,11 @@ func globalErrorHandler(code int, err error, c *echo.Context) {
 	log.Printf("Error detected for %s on %s : %#v", method, path, err)
 
 	switch err {
-	case ErrInvalidUserId:
+	case errInvalidUserID:
 		http.Error(c.Response, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-	case ErrInvalidRequestData:
+	case errInvalidRequestData:
 		http.Error(c.Response, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-	case ErrNotFound:
+	case errNotFound:
 		http.Error(c.Response, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 	case echo.UnsupportedMediaType:
 		// Echo has very limited media type support - See https://github.com/labstack/echo/blob/4068674a0b0fc16d6c33548445208d21cfbfa15b/echo.go#L135

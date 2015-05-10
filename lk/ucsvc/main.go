@@ -19,7 +19,7 @@ func init() {
 	flag.Parse()
 }
 
-func createMux(uh *UserHandler) *echo.Echo {
+func createMux() *echo.Echo {
 	mux := echo.New()
 	// Global error handler
 	mux.HTTPErrorHandler(globalErrorHandler)
@@ -37,23 +37,21 @@ func createMux(uh *UserHandler) *echo.Echo {
 	/users/:id1/connections/:id2	PUT	Empty				Creates a connection between users
 	/users/:id1/connections/:id2	DELETE	Empty				Deletes the connection between users
 	*/
-	mux.Get("/users", uh.getUsers)
-	mux.Post("/users", uh.createUser)
-	mux.Get("/users/:id", uh.getUser)
-	mux.Delete("/users/:id", uh.deleteUser)
-	mux.Get("/users/:id/connections", uh.getUserConnections)
-	mux.Put("/users/:id1/connections/:id2", uh.createUserConnection)
-	mux.Delete("/users/:id1/connections/:id2", uh.deleteUserConnection)
+	mux.Get("/users", getUsers)
+	mux.Post("/users", createUser)
+	mux.Get("/users/:id", getUser)
+	mux.Delete("/users/:id", deleteUser)
+	mux.Get("/users/:id/connections", getUserConnections)
+	mux.Put("/users/:id1/connections/:id2", createUserConnection)
+	mux.Delete("/users/:id1/connections/:id2", deleteUserConnection)
 
 	return mux
 }
 
 func main() {
-	uh := &UserHandler{
-		uc: NewUserConnections(NewMemoryStore()),
-	}
+	userConns = newUserConnections(newMemoryStore())
 
-	e := createMux(uh)
+	e := createMux()
 
 	// Start
 	addr := fmt.Sprintf(":%d", *port)
