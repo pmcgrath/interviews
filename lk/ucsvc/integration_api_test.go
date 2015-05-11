@@ -10,6 +10,14 @@ import (
 	"testing"
 )
 
+func TestGetAllUsersWithNoAuthorization(t *testing.T) {
+	result := executeHttp("", password, "GET", "users", jsonContentType, nil)
+
+	if result.StatusCode != 401 {
+		t.Errorf("Status code [%d] is not 401", result.StatusCode)
+	}
+}
+
 func TestGetAllUsers(t *testing.T) {
 	result := getAllUsersViaApi()
 
@@ -142,7 +150,7 @@ func TestGetUserConnectionsAfterConnectionDeletion(t *testing.T) {
 }
 
 func TestCreateNewUserWithNoData(t *testing.T) {
-	result := executeHttp("POST", "users", jsonMIMEType, []byte(`{}`))
+	result := executeHttp(userName, password, "POST", "users", jsonContentType, []byte(`{}`))
 
 	if result.StatusCode != 400 {
 		t.Errorf("Status code [%d] is not 400", result.StatusCode)
@@ -150,7 +158,7 @@ func TestCreateNewUserWithNoData(t *testing.T) {
 }
 
 func TestCreateNewUserWithEmptyName(t *testing.T) {
-	result := executeHttp("POST", "users", jsonMIMEType, []byte(`{"name": ""}`))
+	result := executeHttp(userName, password, "POST", "users", jsonContentType, []byte(`{"name": ""}`))
 
 	if result.StatusCode != 400 {
 		t.Errorf("Status code [%d] is not 400", result.StatusCode)

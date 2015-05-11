@@ -7,6 +7,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -30,10 +31,12 @@ type apiResult struct {
 }
 
 var (
-	baseUrl      = "http://localhost:8090/"
-	jsonMIMEType = "application/json"
-	emptyPayload = make([]byte, 0)
-	validUserId  = string(newID())
+	baseUrl         = "http://localhost:8090/"
+	userName        = "ted"
+	password        = "toe"
+	jsonContentType = "application/json"
+	emptyPayload    = make([]byte, 0)
+	validUserId     = string(newID())
 )
 
 func getAllUsersViaApi() apiResult {
@@ -48,7 +51,7 @@ func getAllUsersViaApi() apiResult {
 func createNewUserViaApi(name string) apiResult {
 	subUrl := "users"
 	payload := []byte(`{"name":"` + name + `"}`)
-	result := apiResult{httpExecutionResult: executeHttp("POST", subUrl, jsonMIMEType, payload)}
+	result := apiResult{httpExecutionResult: executeHttp(userName, password, "POST", subUrl, jsonContentType, payload)}
 	result.NewUserId = strings.TrimPrefix(result.LocationHeader, "/users/")
 	return result
 }
@@ -84,16 +87,20 @@ func deleteUserConnectionsViaApi(id1, id2 string) apiResult {
 }
 
 func executeSimpleHttp(method, subUrl string) httpExecutionResult {
-	return executeHttp(method, subUrl, jsonMIMEType, emptyPayload)
+	return executeHttp(userName, password, method, subUrl, jsonContentType, emptyPayload)
 }
 
-func executeHttp(method, subUrl, contentType string, payload []byte) httpExecutionResult {
+func executeHttp(userName, password, method, subUrl, contentType string, payload []byte) httpExecutionResult {
 	result := httpExecutionResult{}
+
+	credential := base64.StdEncoding.EncodeToString([]byte(userName + ":" + password))
+	authorization := "Basic " + credential
 
 	url := baseUrl + subUrl
 
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(payload))
 	req.Header.Set("Accept", contentType)
+	req.Header.Set("Authorization", authorization)
 	req.Header.Set("Content-Type", contentType)
 
 	client := &http.Client{}

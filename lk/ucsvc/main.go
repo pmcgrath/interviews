@@ -25,6 +25,7 @@ func createMux() *echo.Echo {
 	mux.HTTPErrorHandler(globalErrorHandler)
 	// Middleware
 	mux.Use(middleware.Logger)
+	mux.Use(basicAuth)
 
 	/* Routes
 	Urls				Verb	Body				Description

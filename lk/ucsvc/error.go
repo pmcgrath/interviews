@@ -9,9 +9,11 @@ import (
 )
 
 var (
-	errInvalidUserID      = errors.New("Invalid user Id")
-	errInvalidRequestData = errors.New("Invalid request data")
-	errNotFound           = errors.New("Not found")
+	errInvalidUserID                   = errors.New("Invalid user Id")
+	errInvalidRequestData              = errors.New("Invalid request data")
+	errNotAuthorized                   = errors.New("Not authorized")
+	errNotAuthorizedInvalidCredentials = errors.New("Not authorized - invalid credentials")
+	errNotFound                        = errors.New("Not found")
 )
 
 func globalErrorHandler(code int, err error, c *echo.Context) {
@@ -28,6 +30,10 @@ func globalErrorHandler(code int, err error, c *echo.Context) {
 		http.Error(c.Response, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 	case errInvalidRequestData:
 		http.Error(c.Response, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+	case errNotAuthorized:
+		http.Error(c.Response, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+	case errNotAuthorizedInvalidCredentials:
+		http.Error(c.Response, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 	case errNotFound:
 		http.Error(c.Response, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 	case echo.UnsupportedMediaType:
