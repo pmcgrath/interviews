@@ -16,31 +16,41 @@ var (
 	errNotFound                        = errors.New("Not found")
 )
 
-func globalErrorHandler(code int, err error, c *echo.Context) {
-	if err == nil {
-		return
-	}
-
+func globalErrorHandler(he *echo.HTTPError, c *echo.Context) {
 	method := c.Request.Method
 	path := c.Request.URL.Path
-	log.Printf("Error detected for %s on %s : %#v", method, path, err)
+	log.Printf("Error detected for %s on %s Error details code: %d message: and error:%#v", method, path, he.Code, he.Message, he.Error)
 
-	switch err {
-	case errInvalidUserID:
-		http.Error(c.Response, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-	case errInvalidRequestData:
-		http.Error(c.Response, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-	case errNotAuthorized:
-		http.Error(c.Response, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-	case errNotAuthorizedInvalidCredentials:
-		http.Error(c.Response, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-	case errNotFound:
-		http.Error(c.Response, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-	case echo.UnsupportedMediaType:
-		// Echo has very limited media type support - See https://github.com/labstack/echo/blob/4068674a0b0fc16d6c33548445208d21cfbfa15b/echo.go#L135
-		// It also only checks the for a prefix match
-		http.Error(c.Response, http.StatusText(http.StatusUnsupportedMediaType), http.StatusUnsupportedMediaType)
-	default:
-		http.Error(c.Response, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	// Based on default one from echo.New function, altered to cater for specific errors
+	// Default code
+	if he.Code == 0 {
+		he.Code = http.StatusInternalServerError
 	}
+	// Deal with specific errors
+	if he.Error != nil {
+		switch he.Error {
+		case errInvalidUserID:
+			he.Code = http.StatusBadRequest
+			// Add specific error message ?
+		case errInvalidRequestData:
+			he.Code = http.StatusBadRequest
+		case errNotAuthorized:
+			he.Code = http.StatusUnauthorized
+		case errNotAuthorizedInvalidCredentials:
+			he.Code = http.StatusUnauthorized
+			// Add specific error message ?
+		case errNotFound:
+			he.Code = http.StatusNotFound
+		case echo.UnsupportedMediaType:
+			// Echo has very limited media type support - See https://github.com/labstack/echo/blob/4068674a0b0fc16d6c33548445208d21cfbfa15b/echo.go#L135
+			// It also only checks the for a prefix match
+			he.Code = http.StatusUnsupportedMediaType
+		}
+	}
+	// If no message, set based on code
+	if he.Message == "" {
+		he.Message = http.StatusText(he.Code)
+	}
+
+	http.Error(c.Response, he.Message, he.Code)
 }

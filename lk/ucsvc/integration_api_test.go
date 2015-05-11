@@ -5,10 +5,7 @@
 //		go test -tags "test integration" -v
 package main
 
-import (
-	"fmt"
-	"testing"
-)
+import "testing"
 
 func TestGetAllUsersWithNoAuthorization(t *testing.T) {
 	result := executeHttp("", password, "GET", "users", jsonContentType, nil)
@@ -173,12 +170,19 @@ func TestGetUserWhereUserDoesNotExist(t *testing.T) {
 	}
 }
 
-func TestCauseEchoPanic(t *testing.T) {
-	result := executeSimpleHttp("PUT", "users/f47ac10b-58cc-0372-8567-0e02b2c3d479/connections/a47ac10b-58cc-0372-8567-0e02b2c3d470/aaaaaa")
+func TestUrlThatUsedToCauseEchoToPanicButIsNowFixed(t *testing.T) {
+	result := executeSimpleHttp("PUT", "users/f47ac10b-58cc-0372-8567-0e02b2c3d479/connections/a47ac10b-58cc-0372-8567-0e02b2c3d470/connections")
 
-	fmt.Println("THIS IS AN ECHO BUG - I SHOULD BE GETTING A 404")
-	if result.StatusCode != 0 {
-		t.Errorf("Status code [%d] is not 0", result.StatusCode)
+	if result.StatusCode != 404 {
+		t.Errorf("Status code [%d] is not 404", result.StatusCode)
+	}
+}
+
+func TestCreateUserWithUnsupportedMediaType(t *testing.T) {
+	result := executeHttp(userName, password, "POST", "users", "xml", nil)
+
+	if result.StatusCode != 415 {
+		t.Errorf("Status code [%d] is not 415", result.StatusCode)
 	}
 }
 

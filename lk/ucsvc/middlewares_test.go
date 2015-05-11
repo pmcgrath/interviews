@@ -14,7 +14,7 @@ func TestBasicAuthViaMux(t *testing.T) {
 	isAuthorized := false
 	mux := echo.New()
 	mux.Use(basicAuth)
-	mux.Get("/users/1", func(c *echo.Context) error {
+	mux.Get("/users/1", func(c *echo.Context) *echo.HTTPError {
 		isAuthorized = true
 		return nil
 	})
@@ -58,7 +58,7 @@ func TestBasicAuth(t *testing.T) {
 
 func executeAuthentication(scheme, credentials string) (bool, error) {
 	isAuthorized := false
-	basicAuthWrappedHandlerFunc := basicAuth(func(c *echo.Context) error {
+	basicAuthWrappedHandlerFunc := basicAuth(func(c *echo.Context) *echo.HTTPError {
 		isAuthorized = true
 		return nil
 	})
@@ -69,6 +69,9 @@ func executeAuthentication(scheme, credentials string) (bool, error) {
 	c := &echo.Context{Request: req}
 
 	err := basicAuthWrappedHandlerFunc(c)
+	if err != nil {
+		return isAuthorized, err.Error
+	}
 
-	return isAuthorized, err
+	return isAuthorized, nil
 }

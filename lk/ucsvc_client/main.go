@@ -83,7 +83,7 @@ func main() {
 	wrappedExecute("PUT", "users/f47a/connections/f47ac10b-58cc-0372-8567-0e02b2c3d479", "")
 	// Create connections for unknow user Id - Should be 404
 	wrappedExecute("PUT", "users/f47ac10b-58cc-0372-8567-0e02b2c3d479/connections/a47ac10b-58cc-0372-8567-0e02b2c3d470", "")
-	// echo package ISSUE - causes a panic - Causes panic in this process and also kills !!!!!!!!!!!!!!!!!!!! - Investigate and report issue on github
+	// Unknown route - used to cause echo package panic - is now fixed
 	wrappedExecute("PUT", "users/f47ac10b-58cc-0372-8567-0e02b2c3d479/connections/a47ac10b-58cc-0372-8567-0e02b2c3d470/aaaaaa", "")
 }
 
