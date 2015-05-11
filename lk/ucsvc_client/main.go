@@ -3,6 +3,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -24,6 +25,8 @@ func (r executionResult) ExtractUserIdFromLocationHeader() string {
 
 var (
 	baseUrl           = flag.String("baseUrl", "http://localhost:8090/", "Service base url")
+	userName          = flag.String("userName", "ted", "Service user name for basic authentication")
+	password          = flag.String("password", "toe", "Service user password for basic authentication")
 	pauseAfterApiCall = flag.Bool("pauseAfterApiCall", false, "Hit enter to continue after each api call, if not set will execute all commands with no pauses")
 )
 
@@ -128,7 +131,7 @@ func wrappedExecute(method, path, payload string) executionResult {
 
 	fmt.Printf("\t> %s on %s\n", method, url)
 
-	result := execute(method, url, payload)
+	result := execute(*userName, *password, method, url, payload)
 
 	fmt.Printf("\t> STATUSCODE = %d\n", result.StatusCode)
 	if result.Body != "" {
@@ -148,7 +151,7 @@ func wrappedExecute(method, path, payload string) executionResult {
 	return result
 }
 
-func execute(method, url, payload string) executionResult {
+func execute(userName, password, method, url, payload string) executionResult {
 	result := executionResult{}
 
 	payloadBytes := make([]byte, 0)
@@ -156,8 +159,12 @@ func execute(method, url, payload string) executionResult {
 		payloadBytes = []byte(payload)
 	}
 
+	credential := base64.StdEncoding.EncodeToString([]byte(userName + ":" + password))
+	authorization := "Basic " + credential
+
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(payloadBytes))
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", authorization)
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
