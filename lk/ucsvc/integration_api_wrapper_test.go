@@ -7,7 +7,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -93,14 +92,11 @@ func executeSimpleHttp(method, subUrl string) httpExecutionResult {
 func executeHttp(userName, password, method, subUrl, contentType string, payload []byte) httpExecutionResult {
 	result := httpExecutionResult{}
 
-	credential := base64.StdEncoding.EncodeToString([]byte(userName + ":" + password))
-	authorization := "Basic " + credential
-
 	url := baseUrl + subUrl
 
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(payload))
+	req.SetBasicAuth(userName, password)
 	req.Header.Set("Accept", contentType)
-	req.Header.Set("Authorization", authorization)
 	req.Header.Set("Content-Type", contentType)
 
 	client := &http.Client{}

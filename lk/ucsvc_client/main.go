@@ -3,7 +3,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -159,12 +158,9 @@ func execute(userName, password, method, url, payload string) executionResult {
 		payloadBytes = []byte(payload)
 	}
 
-	credential := base64.StdEncoding.EncodeToString([]byte(userName + ":" + password))
-	authorization := "Basic " + credential
-
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(payloadBytes))
+	req.SetBasicAuth(userName, password)
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", authorization)
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
