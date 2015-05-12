@@ -19,16 +19,16 @@ type executionResult struct {
 	Body           string
 }
 
-func (r executionResult) ExtractUserIdFromLocationHeader() string {
+func (r executionResult) ExtractUserIDFromLocationHeader() string {
 	// This is pretty lazy - does not check that location header macthed a pattern ... but for now
 	return strings.TrimPrefix(r.LocationHeader, "/users/")
 }
 
 var (
-	baseUrl           = flag.String("baseUrl", "https://localhost:8090/", "Service base url")
+	baseURL           = flag.String("baseURL", "https://localhost:8090/", "Service base URL")
 	userName          = flag.String("userName", "ted", "Service user name for basic authentication")
 	password          = flag.String("password", "toe", "Service user password for basic authentication")
-	pauseAfterApiCall = flag.Bool("pauseAfterApiCall", false, "Hit enter to continue after each api call, if not set will execute all commands with no pauses")
+	pauseAfterAPICall = flag.Bool("pauseAfterAPICall", false, "Hit enter to continue after each api call, if not set will execute all commands with no pauses")
 )
 
 func init() {
@@ -43,9 +43,9 @@ func main() {
 	users := make(map[string]string, len(userNames))
 	for _, userName := range userNames {
 		res := createNewUser(userName)
-		userId := res.ExtractUserIdFromLocationHeader()
-		getUser(userId)
-		users[userName] = userId
+		userID := res.ExtractUserIDFromLocationHeader()
+		getUser(userID)
+		users[userName] = userID
 	}
 
 	// Create connections
@@ -90,45 +90,45 @@ func main() {
 }
 
 func getAllUsers() executionResult {
-	subUrl := "users"
-	return wrappedExecute("GET", subUrl, "")
+	subURL := "users"
+	return wrappedExecute("GET", subURL, "")
 }
 
 func createNewUser(name string) executionResult {
 	fmt.Printf("\n\n*** Create user with name: %s\n", name)
 
-	subUrl := "users"
+	subURL := "users"
 	jsonPayload := `{"name":"` + name + `"}`
-	result := wrappedExecute("POST", subUrl, jsonPayload)
+	result := wrappedExecute("POST", subURL, jsonPayload)
 
-	userId := result.ExtractUserIdFromLocationHeader()
-	fmt.Printf("*** Created user with Id: %s\n", userId)
+	userID := result.ExtractUserIDFromLocationHeader()
+	fmt.Printf("*** Created user with Id: %s\n", userID)
 
 	return result
 }
 
-func getUser(userId string) executionResult {
-	subUrl := "users/" + userId
-	return wrappedExecute("GET", subUrl, "")
+func getUser(userID string) executionResult {
+	subURL := "users/" + userID
+	return wrappedExecute("GET", subURL, "")
 }
 
-func getUserConnections(userId string) executionResult {
-	subUrl := "users/" + userId + "/connections"
-	return wrappedExecute("GET", subUrl, "")
+func getUserConnections(userID string) executionResult {
+	subURL := "users/" + userID + "/connections"
+	return wrappedExecute("GET", subURL, "")
 }
 
 func createConnection(id1, id2 string) executionResult {
-	subUrl := "users/" + id1 + "/connections/" + id2
-	return wrappedExecute("PUT", subUrl, "")
+	subURL := "users/" + id1 + "/connections/" + id2
+	return wrappedExecute("PUT", subURL, "")
 }
 
 func deleteConnection(id1, id2 string) executionResult {
-	subUrl := "users/" + id1 + "/connections/" + id2
-	return wrappedExecute("DELETE", subUrl, "")
+	subURL := "users/" + id1 + "/connections/" + id2
+	return wrappedExecute("DELETE", subURL, "")
 }
 
 func wrappedExecute(method, path, payload string) executionResult {
-	url := *baseUrl + path
+	url := *baseURL + path
 
 	fmt.Printf("\t> %s on %s\n", method, url)
 
@@ -143,7 +143,7 @@ func wrappedExecute(method, path, payload string) executionResult {
 		fmt.Println(string(ppBuf.Bytes()))
 	}
 
-	if *pauseAfterApiCall {
+	if *pauseAfterAPICall {
 		fmt.Printf("\n\n? Hit enter to continue to next api call")
 		var dummy string
 		fmt.Scanf("%s", &dummy)
@@ -155,7 +155,7 @@ func wrappedExecute(method, path, payload string) executionResult {
 func execute(userName, password, method, url, payload string) executionResult {
 	result := executionResult{}
 
-	payloadBytes := make([]byte, 0)
+	var payloadBytes []byte
 	if payload != "" {
 		payloadBytes = []byte(payload)
 	}
