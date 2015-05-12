@@ -16,15 +16,18 @@ openssl req -new -key server.key -out server.csr
 openssl x509 -req -days 365 -in server.csr -signkey server.key -out server.crt
 ```
 
-# So know we have the following file
+
+# So know we have the following files
 - server.pass.key	-- Private key with pass phrase
 - server.key		-- Private key with no pass phrase
 - server.csr		-- CSR that can be submitted to a certificate provider
 - server.crt		-- Certificate that we self signed or would come from the certificate provider which could give a .pem file
 
+
 # Files we need to use on the server
-server.key		-- Private key
-server.crt		-- Certificate file
+- server.key		-- Private key
+- server.crt		-- Certificate file
+
 
 # Links
 https://devcenter.heroku.com/articles/ssl-endpoint#acquire-ssl-certificate
@@ -34,4 +37,3 @@ https://www.openssl.org/docs/HOWTO/certificates.txt
 https://blog.afoolishmanifesto.com/posts/a-gentle-tls-intro-for-perlers/
 http://pro-tips-dot-com.tumblr.com/post/65472594329/golang-establish-secure-http-connections-with
 http://pro-tips-dot-com.tumblr.com/post/65411476159/self-signed-ssl-certificates-with-multiple-hostnames
-

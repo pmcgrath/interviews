@@ -1,4 +1,3 @@
-// Should really be using cucumber style tests, rather than this client, but would require a ruby dependency which I don't want here
 package main
 
 import (
