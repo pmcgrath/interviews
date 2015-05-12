@@ -19,7 +19,7 @@ type executionResult struct {
 }
 
 func init() {
-	// These config is arbitary - would need to be much more aware of service SLAs etc set these
+	// This config is arbitary - would need to be much more aware of service SLAs etc set these
 	hystrix.ConfigureCommand("makeHTTPRequest", hystrix.CommandConfig{
 		Timeout:               100,
 		MaxConcurrentRequests: 10,
