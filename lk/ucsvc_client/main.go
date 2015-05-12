@@ -1,14 +1,16 @@
-// Should really be using cucumber style tests, rather than this client, but would require a ruby dependency which I can't ask for ?
+// Should really be using cucumber style tests, rather than this client, but would require a ruby dependency which I don't want here
 package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type executionResult struct {
@@ -23,7 +25,7 @@ func (r executionResult) ExtractUserIdFromLocationHeader() string {
 }
 
 var (
-	baseUrl           = flag.String("baseUrl", "http://localhost:8090/", "Service base url")
+	baseUrl           = flag.String("baseUrl", "https://localhost:8090/", "Service base url")
 	userName          = flag.String("userName", "ted", "Service user name for basic authentication")
 	password          = flag.String("password", "toe", "Service user password for basic authentication")
 	pauseAfterApiCall = flag.Bool("pauseAfterApiCall", false, "Hit enter to continue after each api call, if not set will execute all commands with no pauses")
@@ -163,7 +165,10 @@ func execute(userName, password, method, url, payload string) executionResult {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
+	// Didn't bother with cert file here, see integration tests for cert file usage
+	tlsConfig := &tls.Config{InsecureSkipVerify: true}
+	transport := &http.Transport{TLSClientConfig: tlsConfig}
+	client := &http.Client{Transport: transport, Timeout: 100 * time.Millisecond}
 	resp, err := client.Do(req)
 	if err != nil {
 		panic(err)
