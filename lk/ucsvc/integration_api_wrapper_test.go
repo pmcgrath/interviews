@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type httpExecutionResult struct {
@@ -39,6 +40,7 @@ var (
 	emptyPayload    = make([]byte, 0)
 	validUserId     = string(newID())
 	certFilePath    = "../certs/server.crt"
+	timeout         = time.Duration(50 * time.Millisecond)
 )
 
 func getAllUsersViaApi() apiResult {
@@ -116,7 +118,7 @@ func executeHttp(userName, password, method, subUrl, contentType string, payload
 
 	tlsConfig := &tls.Config{RootCAs: roots}
 	transport := &http.Transport{TLSClientConfig: tlsConfig}
-	client := &http.Client{Transport: transport}
+	client := &http.Client{Transport: transport, Timeout: timeout}
 
 	resp, err := client.Do(req)
 	if err != nil {
