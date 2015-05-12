@@ -27,11 +27,11 @@ func init() {
 	}
 	if (len(*certFile) + len(*keyFile)) > 0 {
 		if !fileExists(*certFile) {
-			log.Println("Certificate file [%s] does not exist", *certFile)
+			log.Printf("Certificate file [%s] does not exist", *certFile)
 			os.Exit(1)
 		}
 		if !fileExists(*keyFile) {
-			log.Println("Key file [%s] does not exist", *certFile)
+			log.Printf("Key file [%s] does not exist", *certFile)
 			os.Exit(1)
 		}
 

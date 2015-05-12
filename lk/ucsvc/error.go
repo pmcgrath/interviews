@@ -19,7 +19,7 @@ var (
 func globalErrorHandler(he *echo.HTTPError, c *echo.Context) {
 	method := c.Request.Method
 	path := c.Request.URL.Path
-	log.Printf("Error detected for %s on %s Error details code: %d message: and error:%#v", method, path, he.Code, he.Message, he.Error)
+	log.Printf("Error detected for %s on %s Error details code: %d message: %s and error:%#v", method, path, he.Code, he.Message, he.Error)
 
 	// Based on default one from echo.New function, altered to cater for specific errors
 	// Default code

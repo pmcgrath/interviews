@@ -16,5 +16,5 @@ go test -tags "test integration" -v
 
 
 echo All excluding integration tests
-echo Running go test -tags test -v
-go test -tags test -v
+echo Running go test -v
+go test -v
