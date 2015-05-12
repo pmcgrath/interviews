@@ -11,6 +11,10 @@
 			"Rev": "35bc42037350f0078e3c974c6ea690f1926603ab"
 		},
 		{
+			"ImportPath": "github.com/afex/hystrix-go/hystrix",
+			"Rev": "09e845e68ad8082a22d3cd20759050766295d14c"
+		},
+		{
 			"ImportPath": "github.com/labstack/echo",
 			"Comment": "v0.0.12-12-g8ace8e2",
 			"Rev": "8ace8e2143ed733bfd5e23be0ffc6f8ed468e8f5"
