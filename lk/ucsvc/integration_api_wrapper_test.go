@@ -7,6 +7,8 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -30,12 +32,13 @@ type apiResult struct {
 }
 
 var (
-	baseUrl         = "http://localhost:8090/"
+	baseUrl         = "https://localhost:8090/"
 	userName        = "ted"
 	password        = "toe"
 	jsonContentType = "application/json"
 	emptyPayload    = make([]byte, 0)
 	validUserId     = string(newID())
+	certFilePath    = "../certs/server.crt"
 )
 
 func getAllUsersViaApi() apiResult {
@@ -99,7 +102,22 @@ func executeHttp(userName, password, method, subUrl, contentType string, payload
 	req.Header.Set("Accept", contentType)
 	req.Header.Set("Content-Type", contentType)
 
-	client := &http.Client{}
+	// Deal with https certificate, could have been lazy and just set TLS config's InsecureSkipVerify
+	roots := x509.NewCertPool()
+	if strings.HasPrefix(url, "https") {
+		certFileData, err := ioutil.ReadFile(certFilePath)
+		if err != nil {
+			panic(err)
+		}
+		if !roots.AppendCertsFromPEM(certFileData) {
+			panic("Couldn't load certificate file")
+		}
+	}
+
+	tlsConfig := &tls.Config{RootCAs: roots}
+	transport := &http.Transport{TLSClientConfig: tlsConfig}
+	client := &http.Client{Transport: transport}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		result.Error = err

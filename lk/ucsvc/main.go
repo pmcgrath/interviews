@@ -12,11 +12,31 @@ import (
 )
 
 var (
-	port = flag.Int("port", 8090, "Port")
+	certFile = flag.String("certFile", "", "Certificate file, if both certFile and keyFile present will use TLS")
+	keyFile  = flag.String("keyFile", "", "Private key file, if both certFile and keyFile present will use TLS")
+	port     = flag.Int("port", 8090, "Port")
+	useTLS   = false
 )
 
 func init() {
 	flag.Parse()
+
+	if (len(*certFile) > 0 && len(*keyFile) == 0) || (len(*certFile) == 0 && len(*keyFile) > 0) {
+		log.Println("You must supply both a certificate file and key file")
+		os.Exit(1)
+	}
+	if (len(*certFile) + len(*keyFile)) > 0 {
+		if !fileExists(*certFile) {
+			log.Println("Certificate file [%s] does not exist", *certFile)
+			os.Exit(1)
+		}
+		if !fileExists(*keyFile) {
+			log.Println("Key file [%s] does not exist", *certFile)
+			os.Exit(1)
+		}
+
+		useTLS = true
+	}
 }
 
 func createMux() *echo.Echo {
@@ -58,8 +78,12 @@ func main() {
 	addr := fmt.Sprintf(":%d", *port)
 	log.Printf("Using runtime %s\n", runtime.Version())
 	log.Printf("Commit = %s build @ %s Full commit = %s\n", shortCommitHash, buildDate, commitHash)
-	log.Printf("About to listen at %s", addr)
-	e.Run(addr)
+	log.Printf("About to listen at %s using TLS: %t", addr, useTLS)
+	if useTLS {
+		e.RunTLS(addr, *certFile, *keyFile)
+	} else {
+		e.Run(addr)
+	}
 
 	os.Exit(0)
 }
