@@ -1,29 +1,21 @@
 #!/bin/bash
+set -e
+set -v
 
-echo Running go vet .
+# Since this does not exit with a non 0 exit code, we cannot stop
 go vet .
 
-
-echo Running golint .
+# Since this does not exit with a non 0 exit code, we cannot stop
 golint .
 
-
-echo Ensuring Godeps symbolic link exists
+# Ensure Godeps symbolic link exists
 [ ! -d Godeps ] && ln -s ../Godeps Godeps
 
-
-echo Running go build via godep
+# Run go build via godep
 godep go build .
-[ $? -ne 0 ] && exit
 
+# Run all tests excluding integration tests via godep
+godep go test -v
 
-echo All including integration tests
-echo Running go test -tags "test integration" -v
-go test -tags "test integration" -v
-[ $? -ne 0 ] && exit
-
-
-echo All excluding integration tests
-echo Running go test -v
-go test -v
-[ $? -ne 0 ] && exit
+# Run all tests including integration tests via godep, this one is a little odd as a service instance needs to be running
+godep go test -tags "test integration" -v

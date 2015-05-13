@@ -1,17 +1,18 @@
 #!/bin/bash
+set -e
+set -v
 
-echo Running go vet .
+# Since this does not exit with a non 0 exit code, we cannot stop
 go vet .
 
-
-echo Running golint .
+# Since this does not exit with a non 0 exit code, we cannot stop
 golint .
 
-
-echo Ensuring Godeps symbolic link exists
+# Ensure Godeps symbolic link exists
 [ ! -d Godeps ] && ln -s ../Godeps Godeps
 
-
-echo Running go build via godep
+# Run go build via godep
 godep go build .
-[ $? -ne 0 ] && exit
+
+# Run all tests via godep - None yet
+godep go test -v
