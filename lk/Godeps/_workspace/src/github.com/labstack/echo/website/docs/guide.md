@@ -29,33 +29,30 @@ Specific version of Echo can be installed using any [package manager](https://gi
 
 ### Max path parameters
 
-`echo.MaxParam(n uint8)`
+`Echo.SetMaxParam(n uint8)`
 
 Sets the maximum number of path parameters allowed for the application.
 Default value is **5**, [good enough](https://github.com/interagent/http-api-design#minimize-path-nesting)
 for many use cases. Restricting path parameters allows us to use memory efficiently.
 
-### Not found handler
-
-`echo.NotFoundHandler(h Handler)`
-
-Registers a custom NotFound handler. This handler is called in case router doesn't
-find a matching route for the HTTP request.
-
-Default handler sends 404 "Not Found" response.
-
 ### HTTP error handler
 
-`echo.HTTPErrorHandler(h HTTPErrorHandler)`
+`Echo.SetHTTPErrorHandler(h HTTPErrorHandler)`
 
-Registers a custom centralized HTTP error handler `func(*HTTPError, *Context)`.
+Registers a custom `Echo.HTTPErrorHandler`.
 
-Default handler sends `HTTPError.Message` HTTP response with `HTTPError.Code` status
-code.
+Default handler rules
 
-- If HTTPError.Code is not specified it uses 500 "Internal Server Error".
-- If HTTPError.Message is not specified it uses HTTPError.Error.Error() or the status
-code text.
+- If error is of type `Echo.HTTPError` it sends HTTP response with status code `HTTPError.Code`
+and message `HTTPError.Message`.
+- Else it sends `500 - Internal Server Error`.
+- If debug mode is enabled, it uses `error.Error()` as status message.
+
+### Debug
+
+`Echo.SetDebug(on bool)`
+
+Enables debug mode.
 
 ## Routing
 
@@ -70,12 +67,12 @@ code below registers a route for method `GET`, path `/hello` and a handler which
 `Hello!` HTTP response.
 
 ```go
-echo.Get("/hello", func(*echo.Context) *HTTPError {
+echo.Get("/hello", func(*echo.Context) error {
 	return c.String(http.StatusOK, "Hello!")
 })
 ```
 
-Echo's default handler is `func(*echo.Context) *echo.HTTPError` where `echo.Context`
+Echo's default handler is `func(*echo.Context) error` where `echo.Context`
 primarily holds HTTP request and response objects. Echo also has a support for other
 types of handlers.
 
@@ -87,12 +84,12 @@ types of handlers.
 
 ### Path parameter
 
-URL path parameters can be extracted either by name `echo.Context.Param(name string) string`
+Request path parameters can be extracted either by name `echo.Context.Param(name string) string`
 or by index `echo.Context.P(i uint8) string`. Getting parameter by index gives a
 slightly better performance.
 
 ```go
-echo.Get("/users/:id", func(c *echo.Context) *HTTPError {
+echo.Get("/users/:id", func(c *echo.Context) error {
 	// By name
 	id := c.Param("id")
 
@@ -122,15 +119,15 @@ match
 #### Example
 
 ```go
-e.Get("/users/:id", func(c *echo.Context) *HTTPError {
+e.Get("/users/:id", func(c *echo.Context) error {
 	return c.String(http.StatusOK, "/users/:id")
 })
 
-e.Get("/users/new", func(c *echo.Context) *HTTPError {
+e.Get("/users/new", func(c *echo.Context) error {
 	return c.String(http.StatusOK, "/users/new")
 })
 
-e.Get("/users/1/files/*", func(c *echo.Context) *HTTPError {
+e.Get("/users/1/files/*", func(c *echo.Context) error {
 	return c.String(http.StatusOK, "/users/1/files/*")
 })
 ```
@@ -155,7 +152,7 @@ application.
 
 ```go
 // Handler
-h := func(*echo.Context) *HTTPError {
+h := func(*echo.Context) error {
 	return c.String(http.StatusOK, "OK")
 }
 
@@ -163,14 +160,16 @@ h := func(*echo.Context) *HTTPError {
 e.Get("/users/:id", h)
 ```
 
-<!-- ## Middleware -->
+## Middleware
+
+[*WIP*](https://github.com/labstack/echo/tree/master/examples/middleware)
 
 ## Response
 
 ### JSON
 
 ```go
-context.JSON(code int, v interface{}) *HTTPError
+context.JSON(code int, v interface{}) error
 ```
 
 Sends a JSON HTTP response with status code.
@@ -178,7 +177,7 @@ Sends a JSON HTTP response with status code.
 ### String
 
 ```go
-context.String(code int, s string) *HTTPError
+context.String(code int, s string) error
 ```
 
 Sends a text/plain HTTP response with status code.
@@ -186,25 +185,24 @@ Sends a text/plain HTTP response with status code.
 ### HTML
 
 ```go
-func (c *Context) HTML(code int, html string) *HTTPError
+func (c *Context) HTML(code int, html string) error
 ```
 
 Sends an HTML HTTP response with status code.
 
 ### Static files
 
-`echo.Static(path, root string)` serves static files. For example, code below
-serves all files from `public/scripts` directory for any path starting
-with `/scripts/`
+`echo.Static(path, root string)` serves static files. For example, code below serves
+files from directory `public/scripts` for any request path starting with `/scripts/`.
 
 ```go
-e.Static("/scripts", "public/scripts")
+e.Static("/scripts/", "public/scripts")
 ```
 
 ### Serving a file
 
 `echo.ServeFile(path, file string)` serves a file. For example, code below serves
-welcome.html for path `/welcome`
+file `welcome.html` for request path `/welcome`.
 
 ```go
 e.ServeFile("/welcome", "welcome.html")
@@ -212,17 +210,26 @@ e.ServeFile("/welcome", "welcome.html")
 
 ### Serving an index file
 
-`echo.Index(file string)` serves an index file. For example, code below serves
-index.html for path `/`
+`echo.Index(file string)` serves root index page - `GET /`. For example, code below
+serves root index page from file `public/index.html`.
 
 ```go
-e.Index("index.html")
+e.Index("public/index.html")
+```
+
+### Serving favicon 
+
+`echo.Favicon(file string)` serves default favicon - `GET /favicon.ico`. For example,
+code below serves favicon from file `public/favicon.ico`.
+
+```go
+e.Favicon("public/favicon.ico")
 ```
 
 ## Error Handling
 
-Echo advocates centralized HTTP error handling by returning `*echo.HTTPError` from
-middleware and handlers.
+Echo advocates centralized HTTP error handling by returning `error` from middleware
+and handlers.
 
 It allows you to
 
@@ -230,8 +237,8 @@ It allows you to
 - Customize HTTP responses.
 - Recover from panics inside middleware or handlers.
 
-For example, when a basic auth middleware finds invalid credentials it returns 401
-"Unauthorized" error, aborting the current HTTP request.
+For example, when a basic auth middleware finds invalid credentials it returns
+`401 - Unauthorized` error, aborting the current HTTP request.
 
 ```go
 package main
@@ -244,18 +251,18 @@ import (
 
 func main() {
 	e := echo.New()
-	e.Use(func(c *echo.Context) *echo.HTTPError {
+	e.Use(func(c *echo.Context) error {
 		// Extract the credentials from HTTP request header and perform a security
 		// check
 
 		// For invalid credentials
-		return &echo.HTTPError{Code: http.StatusUnauthorized}
+		return echo.NewHTTPError(http.StatusUnauthorized)
 	})
 	e.Get("/welcome", welcome)
 	e.Run(":1323")
 }
 
-func welcome(c *echo.Context) *echo.HTTPError {
+func welcome(c *echo.Context) error {
 	return c.String(http.StatusOK, "Welcome!")
 }
 ```

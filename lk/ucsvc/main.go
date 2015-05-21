@@ -41,11 +41,10 @@ func init() {
 
 func createMux() *echo.Echo {
 	mux := echo.New()
-	// Global error handler
-	mux.HTTPErrorHandler(globalErrorHandler)
 	// Middleware
-	mux.Use(middleware.Logger)
-	mux.Use(basicAuth)
+	mux.Use(middleware.Logger())
+	mux.Use(middleware.BasicAuth(authenticate))
+	mux.Use(middleware.Recover())
 
 	/* Routes
 	Urls				Verb	Body				Description

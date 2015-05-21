@@ -137,11 +137,11 @@ func (r *router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 	}
 }
 
-func newNode(t ntype, pfx string, p *node, c children, h HandlerFunc, pnames []string, echo *Echo) *node {
+func newNode(t ntype, pre string, p *node, c children, h HandlerFunc, pnames []string, echo *Echo) *node {
 	return &node{
 		typ:      t,
-		label:    pfx[0],
-		prefix:   pfx,
+		label:    pre[0],
+		prefix:   pre,
 		parent:   p,
 		children: c,
 		handler:  h,
@@ -308,11 +308,10 @@ func (r *router) Find(method, path string, ctx *Context) (h HandlerFunc, echo *E
 func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	c := r.echo.pool.Get().(*Context)
 	h, _ := r.Find(req.Method, req.URL.Path, c)
-	c.reset(w, req, nil)
-	if h != nil {
-		h(c)
-	} else {
-		r.echo.notFoundHandler(c)
+	c.reset(w, req, r.echo)
+	if h == nil {
+		h = r.echo.notFoundHandler
 	}
+	h(c)
 	r.echo.pool.Put(c)
 }

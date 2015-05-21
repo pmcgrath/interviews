@@ -14,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/mattn/go-colorable"
+	"golang.org/x/net/websocket"
 )
 
 type (
@@ -28,28 +29,28 @@ type (
 		renderer         Renderer
 		uris             map[Handler]string
 		pool             sync.Pool
+		debug            bool
 	}
 	HTTPError struct {
 		Code    int
 		Message string
-		Error   error
 	}
 	Middleware     interface{}
 	MiddlewareFunc func(HandlerFunc) HandlerFunc
 	Handler        interface{}
-	HandlerFunc    func(*Context) *HTTPError
+	HandlerFunc    func(*Context) error
 
 	// HTTPErrorHandler is a centralized HTTP error handler.
-	HTTPErrorHandler func(*HTTPError, *Context)
+	HTTPErrorHandler func(error, *Context)
 
-	BindFunc func(*http.Request, interface{}) *HTTPError
+	BindFunc func(*http.Request, interface{}) error
 
 	// Renderer is the interface that wraps the Render method.
 	//
 	// Render renders the HTML template with given name and specified data.
 	// It writes the output to w.
 	Renderer interface {
-		Render(w io.Writer, name string, data interface{}) *HTTPError
+		Render(w io.Writer, name string, data interface{}) error
 	}
 )
 
@@ -79,6 +80,7 @@ const (
 
 	ApplicationJSON     = "application/json"
 	ApplicationProtobuf = "application/protobuf"
+	ApplicationMsgpack  = "application/msgpack"
 	TextPlain           = "text/plain"
 	TextHTML            = "text/html"
 	ApplicationForm     = "application/x-www-form-urlencoded"
@@ -89,9 +91,12 @@ const (
 	//---------
 
 	Accept             = "Accept"
+	AcceptEncoding     = "Accept-Encoding"
 	ContentDisposition = "Content-Disposition"
+	ContentEncoding    = "Content-Encoding"
 	ContentLength      = "Content-Length"
 	ContentType        = "Content-Type"
+	Authorization      = "Authorization"
 )
 
 var (
@@ -111,9 +116,21 @@ var (
 	// Errors
 	//--------
 
-	UnsupportedMediaType  = errors.New("echo: unsupported media type")
-	RendererNotRegistered = errors.New("echo: renderer not registered")
+	UnsupportedMediaType  = errors.New("echo ⇒ unsupported media type")
+	RendererNotRegistered = errors.New("echo ⇒ renderer not registered")
 )
+
+func NewHTTPError(code int, msgs ...string) *HTTPError {
+	he := &HTTPError{Code: code}
+	if len(msgs) == 0 {
+		he.Message = http.StatusText(code)
+	}
+	return he
+}
+
+func (e *HTTPError) Error() string {
+	return e.Message
+}
 
 // New creates an Echo instance.
 func New() (e *Echo) {
@@ -129,24 +146,23 @@ func New() (e *Echo) {
 	// Defaults
 	//----------
 
-	e.MaxParam(5)
-	e.NotFoundHandler(func(c *Context) {
-		http.Error(c.Response, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-	})
-	e.HTTPErrorHandler(func(he *HTTPError, c *Context) {
-		if he.Code == 0 {
-			he.Code = http.StatusInternalServerError
+	e.SetMaxParam(5)
+	e.notFoundHandler = func(c *Context) error {
+		return NewHTTPError(http.StatusNotFound)
+	}
+	e.SetHTTPErrorHandler(func(err error, c *Context) {
+		code := http.StatusInternalServerError
+		msg := http.StatusText(code)
+		if he, ok := err.(*HTTPError); ok {
+			code = he.Code
+			msg = he.Message
 		}
-		if he.Message == "" {
-			if he.Error != nil {
-				he.Message = he.Error.Error()
-			} else {
-				he.Message = http.StatusText(he.Code)
-			}
+		if e.Debug() {
+			msg = err.Error()
 		}
-		http.Error(c.Response, he.Message, he.Code)
+		http.Error(c.Response, msg, code)
 	})
-	e.Binder(func(r *http.Request, v interface{}) *HTTPError {
+	e.SetBinder(func(r *http.Request, v interface{}) error {
 		ct := r.Header.Get(ContentType)
 		err := UnsupportedMediaType
 		if strings.HasPrefix(ct, ApplicationJSON) {
@@ -154,10 +170,7 @@ func New() (e *Echo) {
 		} else if strings.HasPrefix(ct, ApplicationForm) {
 			err = nil
 		}
-		if err != nil {
-			return &HTTPError{Error: err}
-		}
-		return nil
+		return err
 	})
 	return
 }
@@ -174,38 +187,41 @@ func (e *Echo) Group(pfx string, m ...Middleware) *Echo {
 	return &g
 }
 
-// MaxParam sets the maximum number of path parameters allowed for the application.
+// SetMaxParam sets the maximum number of path parameters allowed for the application.
 // Default value is 5, good enough for many use cases.
-func (e *Echo) MaxParam(n uint8) {
+func (e *Echo) SetMaxParam(n uint8) {
 	e.maxParam = n
 }
 
-// NotFoundHandler registers a custom NotFound handler used by router in case it
-// doesn't find any registered handler for HTTP method and path.
-func (e *Echo) NotFoundHandler(h Handler) {
-	e.notFoundHandler = wrapH(h)
-}
-
-// HTTPErrorHandler registers an HTTP error handler.
-func (e *Echo) HTTPErrorHandler(h HTTPErrorHandler) {
+// SetHTTPErrorHandler registers an Echo.HTTPErrorHandler.
+func (e *Echo) SetHTTPErrorHandler(h HTTPErrorHandler) {
 	e.httpErrorHandler = h
 }
 
-// Binder registers a custom binder. It's invoked by Context.Bind API.
-func (e *Echo) Binder(b BindFunc) {
+// SetBinder registers a custom binder. It's invoked by Context.Bind().
+func (e *Echo) SetBinder(b BindFunc) {
 	e.binder = b
 }
 
-// Renderer registers an HTML template renderer. It's invoked by Context.Render
-// API.
-func (e *Echo) Renderer(r Renderer) {
+// SetRenderer registers an HTML template renderer. It's invoked by Context.Render().
+func (e *Echo) SetRenderer(r Renderer) {
 	e.renderer = r
+}
+
+// SetDebug sets debug mode.
+func (e *Echo) SetDebug(on bool) {
+	e.debug = on
+}
+
+// Debug returns debug mode.
+func (e *Echo) Debug() bool {
+	return e.debug
 }
 
 // Use adds handler to the middleware chain.
 func (e *Echo) Use(m ...Middleware) {
 	for _, h := range m {
-		e.middleware = append(e.middleware, wrapM(h))
+		e.middleware = append(e.middleware, wrapMiddleware(h))
 	}
 }
 
@@ -254,6 +270,54 @@ func (e *Echo) Trace(path string, h Handler) {
 	e.add(TRACE, path, h)
 }
 
+// WebSocket adds a WebSocket route > handler to the router.
+func (e *Echo) WebSocket(path string, h HandlerFunc) {
+	e.Get(path, func(c *Context) *HTTPError {
+		wss := websocket.Server{
+			Handler: func(ws *websocket.Conn) {
+				c.Socket = ws
+				c.Response.status = http.StatusSwitchingProtocols
+				h(c)
+			},
+		}
+		wss.ServeHTTP(c.Response.writer, c.Request)
+		return nil
+	})
+}
+
+func (e *Echo) add(method, path string, h Handler) {
+	key := runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()
+	e.uris[key] = path
+	e.Router.Add(method, e.prefix+path, wrapHandler(h), e)
+}
+
+// Index serves index file.
+func (e *Echo) Index(file string) {
+	e.ServeFile("/", file)
+}
+
+// Favicon serves the default favicon - GET /favicon.ico.
+func (e *Echo) Favicon(file string) {
+	e.ServeFile("/favicon.ico", file)
+}
+
+// Static serves static files.
+func (e *Echo) Static(path, root string) {
+	fs := http.StripPrefix(path, http.FileServer(http.Dir(root)))
+	e.Get(path+"*", func(c *Context) error {
+		fs.ServeHTTP(c.Response, c.Request)
+		return nil
+	})
+}
+
+// ServeFile serves a file.
+func (e *Echo) ServeFile(path, file string) {
+	e.Get(path, func(c *Context) error {
+		http.ServeFile(c.Response, c.Request, file)
+		return nil
+	})
+}
+
 // URI generates a URI from handler.
 func (e *Echo) URI(h Handler, params ...interface{}) string {
 	uri := new(bytes.Buffer)
@@ -281,44 +345,16 @@ func (e *Echo) URL(h Handler, params ...interface{}) string {
 	return e.URI(h, params...)
 }
 
-func (e *Echo) add(method, path string, h Handler) {
-	key := runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()
-	e.uris[key] = path
-	e.Router.Add(method, e.prefix+path, wrapH(h), e)
-}
-
-// Static serves static files.
-func (e *Echo) Static(path, root string) {
-	fs := http.StripPrefix(path, http.FileServer(http.Dir(root)))
-	e.Get(path+"/*", func(c *Context) *HTTPError {
-		fs.ServeHTTP(c.Response, c.Request)
-		return nil
-	})
-}
-
-// ServeFile serves a file.
-func (e *Echo) ServeFile(path, file string) {
-	e.Get(path, func(c *Context) *HTTPError {
-		http.ServeFile(c.Response, c.Request, file)
-		return nil
-	})
-}
-
-// Index serves index file.
-func (e *Echo) Index(file string) {
-	e.ServeFile("/", file)
-}
-
 func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c := e.pool.Get().(*Context)
 	h, echo := e.Router.Find(r.Method, r.URL.Path, c)
 	if echo != nil {
 		e = echo
 	}
+	c.reset(w, r, e)
 	if h == nil {
 		h = e.notFoundHandler
 	}
-	c.reset(w, r, e)
 
 	// Chain middleware with handler in the end
 	for i := len(e.middleware) - 1; i >= 0; i-- {
@@ -355,105 +391,82 @@ func (e *Echo) RunTLSServer(server *http.Server, certFile, keyFile string) {
 	log.Fatal(server.ListenAndServeTLS(certFile, keyFile))
 }
 
-// wraps Middleware
-func wrapM(m Middleware) MiddlewareFunc {
+// wraps middleware
+func wrapMiddleware(m Middleware) MiddlewareFunc {
 	switch m := m.(type) {
 	case MiddlewareFunc:
 		return m
 	case func(HandlerFunc) HandlerFunc:
 		return m
-	case func(*Context) *HTTPError:
-		return func(h HandlerFunc) HandlerFunc {
-			return func(c *Context) *HTTPError {
-				if he := m(c); he != nil {
-					return he
-				}
-				return h(c)
-			}
-		}
-	case func(*Context):
-		return func(h HandlerFunc) HandlerFunc {
-			return func(c *Context) *HTTPError {
-				m(c)
-				if !c.Response.committed {
-					h(c)
-				}
-				return nil
-			}
-		}
+	case HandlerFunc:
+		return wrapHandlerFuncMW(m)
+	case func(*Context) error:
+		return wrapHandlerFuncMW(m)
 	case func(http.Handler) http.Handler:
 		return func(h HandlerFunc) HandlerFunc {
-			return func(c *Context) (he *HTTPError) {
+			return func(c *Context) (err error) {
 				m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					c.Response.Writer = w
+					c.Response.writer = w
 					c.Request = r
-					he = h(c)
-				})).ServeHTTP(c.Response.Writer, c.Request)
+					err = h(c)
+				})).ServeHTTP(c.Response.writer, c.Request)
 				return
 			}
 		}
-	case http.Handler, http.HandlerFunc:
-		return func(h HandlerFunc) HandlerFunc {
-			return func(c *Context) *HTTPError {
-				m.(http.Handler).ServeHTTP(c.Response.Writer, c.Request)
-				return h(c)
-			}
-		}
+	case http.Handler:
+		return wrapHTTPHandlerFuncMW(m.ServeHTTP)
+	case http.HandlerFunc:
+		return wrapHTTPHandlerFuncMW(m)
 	case func(http.ResponseWriter, *http.Request):
-		return func(h HandlerFunc) HandlerFunc {
-			return func(c *Context) *HTTPError {
-				m(c.Response, c.Request)
-				if !c.Response.committed {
-					h(c)
-				}
-				return nil
-			}
-		}
-	case func(http.ResponseWriter, *http.Request) *HTTPError:
-		return func(h HandlerFunc) HandlerFunc {
-			return func(c *Context) *HTTPError {
-				if he := m(c.Response, c.Request); he != nil {
-					return he
-				}
-				if !c.Response.committed {
-					h(c)
-				}
-				return nil
-			}
-		}
+		return wrapHTTPHandlerFuncMW(m)
 	default:
-		panic("echo: unknown middleware")
+		panic("echo => unknown middleware")
 	}
 }
 
-// wraps Handler
-func wrapH(h Handler) HandlerFunc {
+// Wraps HandlerFunc middleware
+func wrapHandlerFuncMW(m HandlerFunc) MiddlewareFunc {
+	return func(h HandlerFunc) HandlerFunc {
+		return func(c *Context) error {
+			if err := m(c); err != nil {
+				return err
+			}
+			return h(c)
+		}
+	}
+}
+
+// Wraps http.HandlerFunc middleware
+func wrapHTTPHandlerFuncMW(m http.HandlerFunc) MiddlewareFunc {
+	return func(h HandlerFunc) HandlerFunc {
+		return func(c *Context) error {
+			if !c.Response.committed {
+				m.ServeHTTP(c.Response.writer, c.Request)
+			}
+			return h(c)
+		}
+	}
+}
+
+// wraps handler
+func wrapHandler(h Handler) HandlerFunc {
 	switch h := h.(type) {
 	case HandlerFunc:
 		return h
-	case func(*Context) *HTTPError:
+	case func(*Context) error:
 		return h
-	case func(*Context):
-		return func(c *Context) *HTTPError {
-			h(c)
-			return nil
-		}
 	case http.Handler, http.HandlerFunc:
-		return func(c *Context) *HTTPError {
+		return func(c *Context) error {
 			h.(http.Handler).ServeHTTP(c.Response, c.Request)
 			return nil
 		}
-	case func(http.ResponseWriter, *http.Request) *HTTPError:
-		return func(c *Context) *HTTPError {
-			return h(c.Response, c.Request)
-		}
 	case func(http.ResponseWriter, *http.Request):
-		return func(c *Context) *HTTPError {
+		return func(c *Context) error {
 			h(c.Response, c.Request)
 			return nil
 		}
 	default:
-		panic("echo: unknown handler")
+		panic("echo ⇒ unknown handler")
 	}
 }
 

@@ -16,9 +16,39 @@ func main() {
 	// Echo instance
 	e := echo.New()
 
+	// Debug mode
+	e.SetDebug(true)
+
+	//------------
 	// Middleware
+	//------------
+
+	// Logger
 	e.Use(mw.Logger())
+
+	// Recover
 	e.Use(mw.Recover())
+
+	// Basic auth
+	e.Use(mw.BasicAuth(func(u, p string) bool {
+		if u == "joe" && p == "secret" {
+			return true
+		}
+		return false
+	}))
+
+	//-------
+	// Slash
+	//-------
+
+	e.Use(mw.StripTrailingSlash())
+
+	// or
+
+	//	e.Use(mw.RedirectToSlash())
+
+	// Gzip
+	e.Use(mw.Gzip())
 
 	// Routes
 	e.Get("/", hello)

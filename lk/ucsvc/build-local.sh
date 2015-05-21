@@ -9,7 +9,7 @@ go vet .
 golint .
 
 # Ensure Godeps symbolic link exists
-[ ! -d Godeps ] && ln -s ../Godeps Godeps
+[ ! -d Godeps ] && ln -s ../Godeps
 
 # Run go build via godep
 godep go build .
